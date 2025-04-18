@@ -1,83 +1,71 @@
 # Golf Booking Service
 
-A Node.js Express service that allows multiple golf clubs to accept tee time bookings through a mock EZLinks integration.
+A RESTful API service for managing golf course bookings, built with Node.js and Express.
 
 ## Features
 
-- 📅 Book tee times for multiple golf clubs
-- 📆 Check tee time availability
-- ❌ Cancel existing bookings
-- 🏢 Multi-club support with individual EZLinks configurations
-- 📝 In-memory booking storage (ready for database integration)
-
-## Setup
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Copy the environment file:
-   ```bash
-   cp .env.example .env
-   ```
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+- Book tee times at multiple golf courses
+- Check course availability
+- Cancel existing bookings
+- Secure API key authentication
 
 ## API Endpoints
 
-### Book a Tee Time
-```http
-POST /book
-Content-Type: application/json
+### Booking
+- `POST /booking` - Create a new booking
+  - Required fields: `club_id`, `date`, `time`, `players`, `player_names`
+  - Returns: Booking details with course information
 
-{
-  "club_id": "emirates-gc",
-  "user_phone": "+971501234567",
-  "date": "2024-03-20",
-  "time": "07:30",
-  "players": 2
-}
-```
+### Availability
+- `GET /availability` - Check course availability
+  - Required query params: `club_id`, `date`
+  - Returns: Available tee times with pricing
 
-### Check Availability
-```http
-GET /availability?club_id=emirates-gc&date=2024-03-20
-```
+### Cancel
+- `POST /cancel` - Cancel an existing booking
+  - Required fields: `booking_id`
+  - Returns: Cancellation confirmation
 
-### Cancel Booking
-```http
-POST /cancel
-Content-Type: application/json
+## Authentication
 
-{
-  "booking_id": "uuid-of-booking"
-}
-```
+All endpoints require an API key in the `x-api-key` header.
 
 ## Development
 
-- Run in development mode (with auto-reload):
-  ```bash
-  npm run dev
-  ```
-- Run in production mode:
-  ```bash
-  npm start
-  ```
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-## Environment Variables
+2. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-- `PORT`: Server port (default: 3000)
-- `NODE_ENV`: Environment (development/production)
-- `LOG_LEVEL`: Logging verbosity
+3. Run tests:
+   ```bash
+   npm test
+   ```
 
-## Mock Data
+4. Start the server:
+   ```bash
+   npm start
+   ```
 
-The service includes mock data for two golf clubs:
-- Emirates Golf Club
-- Arabian Ranches Golf Club
+## Testing
 
-Each club has its own mock EZLinks configuration for testing. 
+The project includes comprehensive test coverage for all endpoints:
+- Booking creation and validation
+- Availability checking
+- Cancellation handling
+- Error cases and authentication
+
+Run tests with:
+```bash
+npm test
+```
+
+## License
+
+MIT 
