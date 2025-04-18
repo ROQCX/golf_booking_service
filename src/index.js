@@ -2,10 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { authenticateApiKey } from './middleware/auth.js';
 
-import bookRouter from './routes/book.js';
-import availabilityRouter from './routes/availability.js';
-import cancelRouter from './routes/cancel.js';
+import { bookingRouter } from './routes/booking.js';
+import { availabilityRouter } from './routes/availability.js';
+import { cancelRouter } from './routes/cancel.js';
 
 // Load environment variables
 dotenv.config();
@@ -14,12 +15,24 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
-app.use(morgan('dev'));
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'x-api-key']
+}));
 app.use(express.json());
+app.use(morgan('dev'));
+
+// Apply authentication middleware to all routes except health check
+app.use((req, res, next) => {
+  if (req.path === '/health') {
+    return next();
+  }
+  authenticateApiKey(req, res, next);
+});
 
 // Routes
-app.use(bookRouter);
+app.use(bookingRouter);
 app.use(availabilityRouter);
 app.use(cancelRouter);
 
@@ -38,5 +51,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(port, () => {
-  console.log(`🏌️ Golf Booking Service running on port ${port}`);
+  console.log(`Server running on port ${port}`);
 }); 

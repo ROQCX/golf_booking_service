@@ -3,9 +3,9 @@ import { getClubById } from '../db/clubs.js';
 import { cancelBooking } from '../services/ezlinksClient.js';
 import { getBooking, updateBooking } from '../db/bookings.js';
 
-const router = express.Router();
+export const cancelRouter = express.Router();
 
-router.post('/cancel', async (req, res) => {
+cancelRouter.post('/', async (req, res) => {
   try {
     const { booking_id } = req.body;
 
@@ -17,27 +17,54 @@ router.post('/cancel', async (req, res) => {
     }
 
     // Get existing booking
-    const booking = getBooking(booking_id);
-    const club = getClubById(booking.clubId);
+    const booking = await getBooking(booking_id);
+    if (!booking) {
+      return res.status(404).json({
+        error: `Booking not found: ${booking_id}`
+      });
+    }
+
+    const club = await getClubById(booking.clubId);
+    if (!club) {
+      return res.status(404).json({
+        error: `Club not found: ${booking.clubId}`
+      });
+    }
     
     // Cancel booking through EZLinks
     const cancelResult = await cancelBooking(club, booking_id);
 
     // Update booking status in our store
-    const updatedBooking = updateBooking(booking_id, {
+    const updatedBooking = await updateBooking(booking_id, {
       status: 'cancelled',
       cancelledAt: cancelResult.cancelledAt
     });
 
     console.log(`Booking cancelled: ${booking_id} at ${club.name}`);
 
-    res.json(updatedBooking);
+    res.json({
+      message: 'Booking cancelled successfully',
+      booking: updatedBooking
+    });
   } catch (error) {
     console.error('Cancellation error:', error);
-    res.status(error.code === 'CANCEL_ERROR' ? 503 : 500).json({
+    if (error.message.includes('Booking not found')) {
+      return res.status(404).json({
+        error: error.message
+      });
+    }
+    if (error.message.includes('Club not found')) {
+      return res.status(404).json({
+        error: error.message
+      });
+    }
+    if (error.code === 'CANCEL_ERROR') {
+      return res.status(503).json({
+        error: error.message
+      });
+    }
+    res.status(500).json({
       error: error.message
     });
   }
-});
-
-export default router; 
+}); 

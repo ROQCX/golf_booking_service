@@ -1,29 +1,92 @@
 import express from 'express';
 import request from 'supertest';
-import availabilityRouter from '../routes/availability.js';
-import { clearTestData, testData } from './helpers.js';
+import { availabilityRouter } from '../routes/availability.js';
+import { authenticateApiKey } from '../middleware/auth.js';
+import { clearTestData, makeAuthenticatedRequest, testData } from './helpers.js';
+
+const app = express();
+app.use(express.json());
+app.use(authenticateApiKey);
+app.use('/availability', availabilityRouter);
 
 describe('Availability API', () => {
-  let app;
-
   beforeEach(() => {
-    app = express();
-    app.use(express.json());
-    app.use(availabilityRouter);
     clearTestData();
   });
 
-  afterEach(() => {
-    clearTestData();
-  });
-
-  it('should return available tee times for Majlis course', async () => {
-    const response = await request(app)
-      .get('/availability')
-      .query({
+  describe('GET /availability', () => {
+    it('should return availability data for a valid request', async () => {
+      const response = await makeAuthenticatedRequest(app, 'get', '/availability', {
         club_id: testData.validBookings.majlis.club_id,
         date: testData.validBookings.majlis.date
       });
+      
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('availableTimes');
+      expect(response.body).toHaveProperty('courseInfo');
+      expect(response.body).toHaveProperty('date');
+      expect(response.body).toHaveProperty('clubId');
+    });
+
+    it('should return 400 for missing club_id', async () => {
+      const response = await makeAuthenticatedRequest(app, 'get', '/availability', {
+        date: testData.validBookings.majlis.date
+      });
+      
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should return 400 for missing date', async () => {
+      const response = await makeAuthenticatedRequest(app, 'get', '/availability', {
+        club_id: testData.validBookings.majlis.club_id
+      });
+      
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should return 404 for non-existent club', async () => {
+      const response = await makeAuthenticatedRequest(app, 'get', '/availability', {
+        club_id: 'non-existent-club',
+        date: testData.validBookings.majlis.date
+      });
+      
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should return 401 without API key', async () => {
+      const response = await request(app)
+        .get('/availability')
+        .query({
+          club_id: testData.validBookings.majlis.club_id,
+          date: testData.validBookings.majlis.date
+        });
+
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('Unauthorized');
+    });
+
+    it('should return 403 with invalid API key', async () => {
+      const response = await request(app)
+        .get('/availability')
+        .set('x-api-key', 'invalid-key')
+        .query({
+          club_id: testData.validBookings.majlis.club_id,
+          date: testData.validBookings.majlis.date
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Forbidden');
+    });
+  });
+
+  it('should return available tee times for Majlis course', async () => {
+    const response = await makeAuthenticatedRequest(app, 'get', '/availability', {
+      club_id: testData.validBookings.majlis.club_id,
+      date: testData.validBookings.majlis.date
+    });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -45,12 +108,10 @@ describe('Availability API', () => {
   });
 
   it('should return available tee times for Faldo course', async () => {
-    const response = await request(app)
-      .get('/availability')
-      .query({
-        club_id: testData.validBookings.faldo.club_id,
-        date: testData.validBookings.faldo.date
-      });
+    const response = await makeAuthenticatedRequest(app, 'get', '/availability', {
+      club_id: testData.validBookings.faldo.club_id,
+      date: testData.validBookings.faldo.date
+    });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -63,26 +124,5 @@ describe('Availability API', () => {
     });
     expect(Array.isArray(response.body.availableTimes)).toBe(true);
     expect(response.body.availableTimes.length).toBeGreaterThan(0);
-  });
-
-  it('should return 400 for missing required fields', async () => {
-    const response = await request(app)
-      .get('/availability')
-      .query({});
-
-    expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Missing required fields');
-  });
-
-  it('should return 404 for non-existent club', async () => {
-    const response = await request(app)
-      .get('/availability')
-      .query({
-        club_id: 'non-existent-club',
-        date: testData.validBookings.majlis.date
-      });
-
-    expect(response.status).toBe(500);
-    expect(response.body.error).toBe('Club not found: non-existent-club');
   });
 }); 

@@ -1,37 +1,37 @@
 import express from 'express';
-import { getClubById } from '../db/clubs.js';
 import { getAvailability } from '../services/ezlinksClient.js';
+import { getClubById } from '../db/clubs.js';
 
-const router = express.Router();
+export const availabilityRouter = express.Router();
 
-router.get('/availability', async (req, res) => {
+availabilityRouter.get('/', async (req, res) => {
   try {
     const { club_id, date } = req.query;
 
-    // Validate required fields
     if (!club_id || !date) {
       return res.status(400).json({
-        error: 'Missing required fields',
-        required: ['club_id', 'date']
+        error: 'Missing required fields'
       });
     }
 
-    const club = getClubById(club_id);
-    
-    // Get availability through EZLinks
-    const availability = await getAvailability(club, date);
+    const club = await getClubById(club_id);
+    if (!club) {
+      return res.status(404).json({
+        error: `Club not found: ${club_id}`
+      });
+    }
 
-    // Add courseInfo to response
+    const availability = await getAvailability(club, date);
     res.json({
       ...availability,
       courseInfo: club.courseInfo
     });
   } catch (error) {
-    console.error('Availability error:', error);
-    res.status(500).json({
-      error: error.message
-    });
+    if (error.message.includes('Club not found')) {
+      return res.status(404).json({
+        error: error.message
+      });
+    }
+    throw error;
   }
-});
-
-export default router; 
+}); 
