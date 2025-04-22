@@ -17,7 +17,7 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || '*',
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'x-api-key']
 }));
 app.use(express.json());
@@ -31,10 +31,10 @@ app.use((req, res, next) => {
   authenticateApiKey(req, res, next);
 });
 
-// Routes
-app.use(bookingRouter);
-app.use(availabilityRouter);
-app.use(cancelRouter);
+// Routes with proper prefixes
+app.use('/api/v1/bookings', bookingRouter);
+app.use('/api/v1/availability', availabilityRouter);
+app.use('/api/v1/bookings/cancel', cancelRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
